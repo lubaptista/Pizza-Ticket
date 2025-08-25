@@ -1,0 +1,6 @@
+react-icons
+react-router-dom
+axios
+tailwindcss 
+postcss 
+autoprefixer
