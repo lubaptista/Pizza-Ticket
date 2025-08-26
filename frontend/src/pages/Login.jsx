@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Input from "../components/inputs/Input";
 import AuthLayout from "../components/layouts/AuthLayout";
 import { validateEmail } from "../utils/helper"
@@ -10,6 +10,7 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const navigate = useNavigate();
 
   // Gerenciar o envio de formulário de login
   const handleLogin = async (e) => {
@@ -34,21 +35,21 @@ export default function Login() {
         password,
       });
 
-      const { token, role } = response.data;
+      const { access_token, role } = response.data;
 
-      if (token) {
+      if (access_token) {
         // salva o token
-        localStorage.setItem("token", token);
+        localStorage.setItem("token", access_token);
 
         // atualiza estado global/contexto se tiver
-        updateUser(response.data);
+        // updateUser(response.data);
 
         // redireciona conforme o role
-        if (role === "admin") {
-          navigate("/admin/dashboard");
+        if (role === "garcom") {
+          navigate("/garcom");
         } else {
-          navigate("/user/dashboard");
-        }
+          navigate("/cozinha");
+        } 
       }
     } catch (error) {
       if (error.response && error.response.data.message) {
