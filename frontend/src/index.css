@@ -43,6 +43,9 @@ input[type="password"]::-webkit-password-toggle-button {
   .box {
     height: 100%;
   }
+  .cardapio-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 /* lg:w-[70%] → em telas grandes (>=1024px) */
@@ -56,6 +59,114 @@ input[type="password"]::-webkit-password-toggle-button {
   cursor: pointer;
 }
 
+.navbar {
+  display: flex;                
+  align-items: center;          
+  justify-content: space-between;
+  padding: 12px 28px;
+  background-color: #1a1a2e;    
+  color: white;  
+}
+
+.navbar a {
+  font-size: 1.5rem;  
+  line-height: 2rem;
+  font-weight: 700; 
+  text-decoration: none;
+}
+
+.navbar-links-container {
+  display: flex;
+  align-items: center;
+  gap: 1rem; 
+  text-decoration: none;
+}
+
+.navbar-links-container a,
+.navbar-links-container button {
+  font-size: 20px;
+  text-decoration: none;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.navbar-links-container a:hover,
+.navbar-links-container button:hover {
+  color: #f87171; /* equivalente a red-400 */
+}
+
+.page-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: #0f0f1a; 
+  color: white;         
+}
+
+/* container que centraliza */
+.cont-container {
+  display: flex;        
+  flex-direction: column;      
+  align-items: center;        
+  justify-content: center;  
+  flex: 1;                     /* ocupa todo o espaço restante abaixo da Navbar */
+  width: 100%;    
+  box-sizing: border-box;     
+}
+
+/* formulário */
+.form-container {
+  width: 100%;              
+  max-width: 28rem;           
+  background-color: #1a1a2e;
+  padding: 2rem;              
+  border-radius: 1rem;       
+  box-shadow: 0 4px 6px rgba(0,0,0,0.3); 
+}
+
+/* título */
+.form-container h1 {
+  font-size: 1.5rem;         
+  font-weight: 600;           
+  margin-bottom: 1.5rem;  
+  text-align: center;       
+}
+
+.form-container input {
+  width: 100%;                  
+  padding: 0.75rem;              
+  border-radius: 0.375rem;       
+  background-color: transparent; 
+  border: 1px solid #6b7280;     
+  outline: none;                
+  margin-bottom: 1.5rem;        
+  color: white;  
+}
+
+.form-container input:focus {
+  border-color: #4ade80;         /* focus:border-green-400 (#4ade80) */
+}
+
+.form-container button {
+   width: 100%;            
+  padding-top: 0.75rem;     
+  padding-bottom: 0.75rem;
+  border-radius: 0.375rem;     
+  background-color: #4ade80;   
+  color: black;               
+  font-weight: 600;            
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.form-container button:hover {
+  background-color: #86efac; 
+}
+
 .page {
   width: 100vw;          
   height: 100vh;         
@@ -65,10 +176,9 @@ input[type="password"]::-webkit-password-toggle-button {
   padding-bottom: 3rem;  
 }
 
-.page h2 {
-  font-size: 18px;  
-  font-weight: 500;      /* font-medium */
-  color: black; 
+.page h1 {
+  margin-top: -10px;
+  margin-bottom: 10px;
 }
 
 .box {
@@ -78,17 +188,10 @@ input[type="password"]::-webkit-password-toggle-button {
   justify-content: center;
 }
 
-.box h3{
-  font-size: 20px;
-  font-weight: 600;   /* font-semibold */
-  color: black;
-}
-
 .box p{
-  font-size: 12px;
-  color: #334155;
-  margin-top: 5px;    
-  margin-bottom: 24px;
+  font-size: 14px;
+  margin-top: 10px;    
+  margin-bottom: 20px;
 }
 
 .text-error {
@@ -96,35 +199,31 @@ input[type="password"]::-webkit-password-toggle-button {
   font-size: 12px !important; 
 }
 
+.label {
+  color: white;
+}
+
 .text-bottom {
-  font-size: 13px !important;     
-  color: #1e293b !important;      
+  font-size: 13px !important;         
   margin-top: 12px !important;  
 }
 
 .custom-link {
   font-weight: 500;    
   color: #1368EC; 
-  text-decoration: underline; 
 }
 
 /* Estilo de inputs */
 .input-box {
   width: 100%;                  
-  display: flex;                
-  justify-content: space-between;
-  gap: 12px;                  
-  font-size: 14px;  
-  color: black;                
-  background-color: rgba(241, 245, 249, 0.5);
-  border-radius: 8px;         
-  padding-left: 16px;            
-  padding-right: 1rem;
-  padding-top: 12px;          
-  padding-bottom: 12px;
+  display: flex;      
+  align-items: center;                  
+  background-color: #252541;
+  border-radius: 8px;                
+  padding: 8px;
   margin-bottom: 16px;           
   margin-top: 12px;           
-  border: 1px solid #e2e8f0;    
+  border: 1px solid #7c7cb6;    
   outline: none;                
 }
 
@@ -133,6 +232,7 @@ input[type="password"]::-webkit-password-toggle-button {
   background: transparent; 
   outline: none; 
   border: none;
+  margin: 0;
 }
 
 /* Estilo de botões */
@@ -158,5 +258,42 @@ input[type="password"]::-webkit-password-toggle-button {
 
 .label-custom {
   font-size: 13px;
-  color: #1e293b; /* equivale ao slate-800 */
+  color: #1e293b;
+}
+
+.cardapio-grid {
+  display: grid;
+  grid-template-columns: 1fr; 
+  gap: 1.5rem; 
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+/* estilo dos cards */
+.cardapio-card {
+  background-color: #1f2937; 
+  border-radius: 0.5rem; 
+  padding: 20px; 
+  box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+  transition: box-shadow 0.3s ease;
+  color: white; 
+}
+
+.cardapio-card:hover {
+  box-shadow: 0 8px 12px rgba(0,0,0,0.5);
+}
+
+.cardapio-card h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.cardapio-card p {
+  margin-bottom: 0.25rem;
+}
+
+.cardapio-card .preco {
+  color: #34d399; 
+  font-weight: bold;
 }

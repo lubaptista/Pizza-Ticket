@@ -61,29 +61,36 @@ export default function Login() {
   }
 
   return (
-    <AuthLayout>
-      <div className='box'>
-        <h3>Bem-vindo de volta!</h3>
+      <div className='form-container box'>
+        <div style={{alignSelf: 'center', fontSize: '24px', fontWeight: '700'}}>
+          <span style={{color: '#ef4444'}}>Pizza</span>
+          <span style={{color: 'white'}}>Ticket</span>
+        </div>
+
         <p>
           Por favor, insira suas informações para logar.
         </p>
 
         <form onSubmit={handleLogin}>
-          <Input 
-            value={email}
-            onChange={({ target }) => setEmail(target.value)}
-            label="Endereço de Email"
-            placeholder="john@example.com"
-            type="text"
-          />
+          <label style={{ color: 'white', fontSize: '12px' }}>
+            Endereço de Email:
+            <Input
+              value={email}
+              onChange={({ target }) => setEmail(target.value)}
+              placeholder="john@example.com"
+              type="text"
+            />
+          </label>
 
-          <Input 
-            value={password}
-            onChange={({ target }) => setPassword(target.value)}
-            label="Senha"
-            placeholder="Mínimo 8 caracteres"
-            type="password"
-          />
+          <label style={{ color: 'white', fontSize: '12px' }}>
+            Senha:
+            <Input 
+              value={password}
+              onChange={({ target }) => setPassword(target.value)}
+              placeholder="Mínimo 8 caracteres"
+              type="password"
+            />
+          </label>
 
           {error && <p className='text-error'>{error}</p>}
 
@@ -99,6 +106,5 @@ export default function Login() {
           </p>
         </form>
       </div>
-    </AuthLayout>
   );
 }
