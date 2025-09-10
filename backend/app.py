@@ -5,6 +5,7 @@ from models import db
 from routes.auth import auth_bp
 from routes.pedidos import pedidos_bp
 from routes.cardapio import cardapio_bp
+from routes.itens import itens_bp
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
@@ -13,7 +14,7 @@ app.config["JWT_SECRET_KEY"] = "sua_chave_secreta"
 
 db.init_app(app)
 jwt = JWTManager(app)
-CORS(app)
+CORS(app, origins="http://localhost:5173", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
 
 # Rota de login/logout, geração de JWT:
 app.register_blueprint(auth_bp, url_prefix="/auth") 
@@ -21,6 +22,8 @@ app.register_blueprint(auth_bp, url_prefix="/auth")
 app.register_blueprint(pedidos_bp, url_prefix="/pedidos")
 # Rota paar realizar CRUD de categorias e itens:
 app.register_blueprint(cardapio_bp, url_prefix="/cardapio")
+
+app.register_blueprint(itens_bp)
 
 if __name__ == "__main__":
     with app.app_context():

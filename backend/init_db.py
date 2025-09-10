@@ -1,6 +1,6 @@
 from werkzeug.security import generate_password_hash
 from app import app
-from models import db, Usuario, Categoria, Item, Pedido, PedidoItem
+from models import db, Usuario, Categoria, Item, Pedido, PedidoItem, Mesa
 
 def init_db():
     with app.app_context():
@@ -33,6 +33,16 @@ def init_db():
         ]
         db.session.add_all(itens)
         db.session.commit()
+
+        mesas = [
+            Mesa(label="Mesa 1"),
+            Mesa(label="Mesa 2"),
+            Mesa(label="Mesa 3"),
+            Mesa(label="Mesa 4"),
+        ]
+        db.session.add_all(mesas)
+        db.session.commit()
+
 
         print("✅ Banco de dados inicializado com sucesso!")
 

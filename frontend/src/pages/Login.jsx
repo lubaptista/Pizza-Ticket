@@ -30,35 +30,35 @@ export default function Login() {
 
     // Chamada da API de Login
     try {
-      const response = await api.post("/auth/login", {
-        email,
-        password,
-      });
+    const response = await api.post("/auth/login", {
+      email,
+      password,
+    });
 
-      const { access_token, role } = response.data;
+    console.log("Resposta da API:", response.data); // 👈 debug
 
-      if (access_token) {
-        // salva o token
-        localStorage.setItem("token", access_token);
+    const { access_token, role } = response.data;
 
-        // atualiza estado global/contexto se tiver
-        // updateUser(response.data);
+    if (access_token) {
+      localStorage.setItem("token", access_token);
+      localStorage.setItem("role", role);
 
-        // redireciona conforme o role
-        if (role === "garcom") {
-          navigate("/garcom");
-        } else {
-          navigate("/cozinha");
-        } 
-      }
-    } catch (error) {
-      if (error.response && error.response.data.message) {
-        setError(error.response.data.message);
-      } else {
-        setError("Algo deu errado. Por favor, tente novamente.");
+      if (role === "garcom") {
+        navigate("/garcom");
+      } else if (role === "cozinha") {
+        navigate("/cozinha");
+      }else {
+        navigate("/admin");
       }
     }
+  } catch (error) {
+    if (error.response && error.response.data.message) {
+      setError(error.response.data.message);
+    } else {
+      setError("Algo deu errado. Por favor, tente novamente.");
+    }
   }
+};
 
   return (
       <div className='form-container box'>

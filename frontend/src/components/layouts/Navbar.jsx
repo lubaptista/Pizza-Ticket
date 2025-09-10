@@ -1,12 +1,30 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { LogOut } from "lucide-react";
 
 function Navbar() {
+  const navigate = useNavigate();
+  const role = localStorage.getItem("role");
+
+  let homeRoute = "/";
+  if (role === "garcom") {
+    homeRoute = "/garcom";
+  } else if (role === "cozinha") {
+    homeRoute = "/cozinha";
+  } else {
+    homeRoute = "/admin";
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("role");
+    navigate("/"); // volta para login
+  };
+
   return (
     <nav className="navbar">
       {/* Logo */}
-      <Link to="/">
+      <Link to={homeRoute}>
         <span style={{color: '#ef4444'}}>Pizza</span>
         <span style={{color: 'white'}}>Ticket</span>
       </Link>
@@ -21,7 +39,7 @@ function Navbar() {
         </Link>
 
         {/* Logout */}
-        <button>
+        <button onClick={handleLogout}>
           <LogOut size={20} />
         </button>
       </div>

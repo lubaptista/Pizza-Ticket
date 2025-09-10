@@ -2,6 +2,7 @@ import { Routes, Route, Link } from "react-router-dom";
 import Login from "./pages/Login";
 import Garcom from "./pages/Garcom";
 import Cozinha from "./pages/Cozinha";
+import Admin from "./pages/Admin";
 import Cardapio from "./pages/Cardapio";
 import Pedidos from "./pages/Pedidos";
 import NovaCategoria from "./pages/NovaCategoria";
@@ -24,6 +25,7 @@ export default function App() {
         <Route element={<Layout />}>
           <Route path="/garcom" element={<Garcom />} />
           <Route path="/cozinha" element={<Cozinha />} />
+          <Route path="/admin" element={<Admin />} />
           <Route path="/cardapio" element={<Cardapio />} />
           <Route path="/nova-categoria" element={<NovaCategoria />} />
           <Route path="/pedidos" element={<Pedidos />} />
