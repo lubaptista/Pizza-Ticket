@@ -112,7 +112,7 @@ export default function Garcom() {
       // Libera a mesa
       await api.put(`/pedidos/mesa/${mesaSelecionada}/status`, { ocupada: false });
       // Remove todos os pedidos da mesa
-      await api.delete(`/pedidos/mesa/${mesaSelecionada}`);
+      await api.delete(`/pedidos/mesa/${mesaSelecionada}/todos`);
       setMsg("Conta finalizada e pedidos removidos!");
       fetchMesas();
       fetchPedidos();
