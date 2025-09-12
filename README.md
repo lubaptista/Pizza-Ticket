@@ -10,10 +10,8 @@ Permite o cadastro de pedidos, controle de status (aberto, em preparo, entregue)
 - 📋 Criar e gerenciar comandas
 - 🍽️ Associar pedidos de pizzas e bebidas a cada comanda
 - 🔐 Autenticação de usuários com perfis diferentes:
-  - **Admin** → gerencia usuários e relatórios
   - **Garçom** → abre comandas e envia pedidos
   - **Cozinha** → visualiza pedidos e atualiza status
-  - **Cliente** → consulta status do pedido
 
 ---
 
