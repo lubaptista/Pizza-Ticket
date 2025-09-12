@@ -73,6 +73,26 @@ def criar_pedido():
         "status": pedido.status
     }), 201
 
+# Remover todos os pedidos de uma mesa
+@pedidos_bp.route("/mesa/<int:mesa_id>/todos", methods=["DELETE"])
+def remover_pedidos_mesa(mesa_id):
+    try:
+        # Busca todos os pedidos da mesa
+        pedidos_da_mesa = Pedido.query.filter_by(mesa_id=mesa_id).all()
+        if not pedidos_da_mesa:
+            return jsonify({"message": "Nenhum pedido encontrado para esta mesa"}), 404
+
+        # Remove todos os itens de cada pedido
+        for pedido in pedidos_da_mesa:
+            PedidoItem.query.filter_by(pedido_id=pedido.id).delete()
+            db.session.delete(pedido)
+
+        db.session.commit()
+        return jsonify({"message": f"Todos os pedidos da mesa {mesa_id} foram removidos"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+    
 # ============================
 # ROTAS DA COZINHA
 # ============================
@@ -90,6 +110,29 @@ def listar_pedidos():
                 "id": pi.id,
                 "nome": pi.item.nome,
                 "quantidade": pi.quantidade,
+                "status": pi.status
+            })
+        result.append({
+            "id": pedido.id,
+            "mesa": pedido.mesa.label,
+            "status": pedido.status,
+            "itens": itens
+        })
+    return jsonify(result)
+
+@pedidos_bp.route("/todos", methods=["GET"])
+def listar_todos_pedidos():
+    pedidos = Pedido.query.all()  # Remove o filtro para buscar todos os pedidos
+    result = []
+
+    for pedido in pedidos:
+        itens = []
+        for pi in pedido.itens:
+            itens.append({
+                "id": pi.id,
+                "nome": pi.item.nome,
+                "quantidade": pi.quantidade,
+                "preco": pi.item.preco,
                 "status": pi.status
             })
         result.append({

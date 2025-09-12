@@ -4,16 +4,18 @@ import api from "../api";
 export default function Garcom() {
   const [mesas, setMesas] = useState([]);
   const [itens, setItens] = useState([]);
-  const [selecionados, setSelecionados] = useState({}); // {itemId: quantidade}
+  const [pedidos, setPedidos] = useState([]);
+  const [selecionados, setSelecionados] = useState({});
   const [mesaSelecionada, setMesaSelecionada] = useState(null);
+  const [blocoAtivo, setBlocoAtivo] = useState(null);
   const [msg, setMsg] = useState("");
 
   useEffect(() => {
     fetchMesas();
     fetchItens();
+    fetchPedidos();
   }, []);
 
-  // Busca todas as mesas
   const fetchMesas = async () => {
     try {
       const res = await api.get("/pedidos/mesas");
@@ -24,7 +26,6 @@ export default function Garcom() {
     }
   };
 
-  // Busca todos os itens
   const fetchItens = async () => {
     try {
       const res = await api.get("/itens/");
@@ -35,161 +36,301 @@ export default function Garcom() {
     }
   };
 
-  // Atualiza quantidade de um item selecionado
+  const fetchPedidos = async () => {
+    try {
+      const res = await api.get("/pedidos/todos");
+      setPedidos(res.data);
+    } catch (err) {
+      console.error(err);
+      setMsg("Erro ao buscar pedidos");
+    }
+  };
+
   const handleQuantidade = (itemId, quantidade) => {
     setSelecionados((prev) => ({ ...prev, [itemId]: quantidade }));
   };
 
-  // Cria um novo pedido
+  const selecionarMesa = (mesa) => {
+    setMesaSelecionada(mesa.id);
+    setSelecionados({});
+    setMsg("");
+
+    if (mesa.ocupada) {
+      setBlocoAtivo(null);
+    } else {
+      setBlocoAtivo("ocupar");
+    }
+  };
+
+  const ocuparMesa = async () => {
+    if (!mesaSelecionada) return;
+    try {
+      await api.put(`/pedidos/mesa/${mesaSelecionada}/status`, { ocupada: true });
+      setMsg("Mesa ocupada com sucesso!");
+      fetchMesas();
+      setBlocoAtivo(null);
+    } catch (err) {
+      console.error(err);
+      setMsg("Erro ao ocupar mesa");
+    }
+  };
+
   const criarPedido = async () => {
     if (!mesaSelecionada) return setMsg("Selecione uma mesa!");
-    const itensPedido = Object.entries(selecionados).map(([id, quantidade]) => ({
-      id: parseInt(id),
-      quantidade: parseInt(quantidade)
-    }));
+    const itensPedido = Object.entries(selecionados)
+      .filter(([id, quantidade]) => quantidade > 0)
+      .map(([id, quantidade]) => ({
+        id: parseInt(id),
+        quantidade: parseInt(quantidade),
+      }));
+
     if (itensPedido.length === 0) return setMsg("Selecione ao menos um item!");
 
     try {
       await api.post("/pedidos/criar", {
         mesa: mesaSelecionada,
-        itens: itensPedido
+        itens: itensPedido,
       });
       setMsg("Pedido criado!");
       setSelecionados({});
-      setMesaSelecionada(null);
       fetchMesas();
+      fetchPedidos();
     } catch (err) {
       console.error(err);
       setMsg("Erro ao criar pedido");
     }
   };
 
-  // Função para alterar status da mesa (ocupada/livre)
-  const alterarStatusMesa = async (mesaId, ocupada) => {
+  const finalizarConta = async () => {
+    if (!mesaSelecionada) return;
+
     try {
-      await api.put(`/pedidos/mesa/${mesaId}/status`, { ocupada });
-      fetchMesas(); // Atualiza a lista de mesas
+      // Libera a mesa
+      await api.put(`/pedidos/mesa/${mesaSelecionada}/status`, { ocupada: false });
+      // Remove todos os pedidos da mesa
+      await api.delete(`/pedidos/mesa/${mesaSelecionada}`);
+      setMsg("Conta finalizada e pedidos removidos!");
+      fetchMesas();
+      fetchPedidos();
+      setBlocoAtivo(null);
+      setMesaSelecionada(null);
     } catch (err) {
       console.error(err);
-      setMsg("Erro ao alterar status da mesa");
+      setMsg("Erro ao finalizar conta");
     }
   };
 
-  // Encontra a mesa selecionada para exibir o nome
-  const mesaAtual = mesas.find(mesa => mesa.id === mesaSelecionada);
+  const voltarParaMesas = () => {
+    setBlocoAtivo(null);
+    setMesaSelecionada(null);
+    setSelecionados({});
+    setMsg("");
+  };
+
+  const mesaAtual = mesas.find((m) => m.id === mesaSelecionada);
+
+  const pedidosPorMesa =
+    Array.isArray(pedidos) && pedidos.length > 0
+      ? pedidos.reduce((acc, pedido) => {
+          if (pedido && pedido.mesa) {
+            if (!acc[pedido.mesa]) acc[pedido.mesa] = [];
+            acc[pedido.mesa].push(pedido);
+          }
+          return acc;
+        }, {})
+      : {};
 
   return (
     <div className="page">
       <h1>Página do Garçom</h1>
 
-      <div style={{ display: 'flex', gap: '20px' }}>
-        {/* Bloco das Mesas */}
+      <div style={{ display: "flex", gap: "20px" }}>
+        {/* Bloco Mesas */}
         <div className="form-container box" style={{ flex: 1 }}>
           <h2>Mesas</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {mesas.map((mesa) => (
-              <div key={mesa.id} style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            {mesas.length === 0 ? (
+              <p>Carregando mesas...</p>
+            ) : (
+              mesas.map((mesa) => (
                 <button
-                  onClick={() => setMesaSelecionada(mesa.id)}
-                  style={{ fontWeight: mesa.id === mesaSelecionada ? "bold" : "normal" }}
+                  key={mesa.id}
+                  onClick={() => selecionarMesa(mesa)}
+                  style={{
+                    padding: "10px",
+                    cursor: "pointer",
+                  }}
                 >
                   {mesa.label} {mesa.ocupada ? "(ocupada)" : "(livre)"}
                 </button>
-                <button
-                  onClick={() => alterarStatusMesa(mesa.id, !mesa.ocupada)}
-                  style={{
-                    backgroundColor: mesa.ocupada ? "#2ecc71" : "#e74c3c",
-                    color: "#fff",
-                    border: "none",
-                    padding: "8px 16px",
-                    cursor: "pointer",
-                    borderRadius: "20px",
-                    fontSize: "12px",
-                    fontWeight: "600",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.5px",
-                    boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
-                    transition: "all 0.3s ease",
-                    transform: "scale(1)"
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.backgroundColor = mesa.ocupada ? "#27ae60" : "#c0392b";
-                    e.target.style.transform = "scale(1.05)";
-                    e.target.style.boxShadow = "0 4px 12px rgba(0,0,0,0.2)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.backgroundColor = mesa.ocupada ? "#2ecc71" : "#e74c3c";
-                    e.target.style.transform = "scale(1)";
-                    e.target.style.boxShadow = "0 2px 6px rgba(0,0,0,0.15)";
-                  }}
-                >
-                  {mesa.ocupada ? "Liberar" : "Ocupar"}
-                </button>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
-        {/* Bloco dos Itens - Aparece apenas quando uma mesa é selecionada */}
-        {mesaSelecionada && (
-          <div className="form-container box" style={{ flex: 1, position: 'relative' }}>
-            <button 
-              onClick={() => {
-                setMesaSelecionada(null);
-                setSelecionados({});
-                setMsg("");
-              }}
+        {/* Bloco Ações */}
+        <div className="form-container box" style={{ flex: 2 }}>
+          {!mesaSelecionada && (
+            <div>
+              <h2>Selecione uma mesa</h2>
+              <p>Clique em uma mesa para ver as opções disponíveis.</p>
+            </div>
+          )}
+
+          {mesaSelecionada && mesaAtual && !blocoAtivo && (
+            <div>
+              <h2>Mesa {mesaAtual.label}</h2>
+              {mesaAtual.ocupada ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  <button onClick={() => setBlocoAtivo("finalizar")}>Finalizar Conta</button>
+                  <button onClick={() => setBlocoAtivo("pedidos")}>Ver Pedidos</button>
+                  <button onClick={() => setBlocoAtivo("fazer-pedido")}>Fazer Pedido</button>
+                </div>
+              ) : (
+                <button onClick={() => setBlocoAtivo("ocupar")}>Ocupar Mesa</button>
+              )}
+              <button onClick={voltarParaMesas} style={{ marginTop: "20px" }}>
+                Voltar
+              </button>
+            </div>
+          )}
+
+          {/* Bloco Ocupar Mesa */}
+          {blocoAtivo === "ocupar" && (
+            <div>
+              <h2>Ocupar Mesa {mesaAtual?.label}</h2>
+              <p>Confirma a ocupação desta mesa?</p>
+              <div style={{ display: "flex", gap: "10px" }}>
+                <button onClick={ocuparMesa}>Confirmar</button>
+                <button onClick={() => setBlocoAtivo(null)}>Cancelar</button>
+              </div>
+            </div>
+          )}
+
+          {/* Bloco Fazer Pedido */}
+          {blocoAtivo === "fazer-pedido" && (
+            <div>
+              <h3>Fazer Pedido - {mesaAtual?.label}</h3>
+              <div className="cardapio-grid" style={{ gap: "0.75rem", padding: "0.5rem" }}>
+                {itens.map((item) => (
+                  <div
+                    key={item.id}
+                    className="cardapio-card">
+                    <div
+                      style={{ display: "flex", justifyContent: "", alignItems: "center" }}
+                    >
+                      <span>{item.nome}ㅤ-ㅤ</span>
+                      <span className="preco"> R${item.preco}</span>
+                    </div>
+                    <input
+                      type="number"
+                      min="0"
+                      value={selecionados[item.id] || 0}
+                      onChange={(e) => handleQuantidade(item.id, e.target.value)}
+                      className="input-box"
+                      style={{ marginTop: "6px", marginBottom: "0", padding: "4px" }}
+                    />
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
+                <button className="btn-primary" onClick={criarPedido} style={{ flex: 1 }}>
+                  Confirmar
+                </button>
+                <button className="btn-primary" onClick={() => setBlocoAtivo(null)} style={{ flex: 1 }}>
+                  Voltar
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Bloco Ver Pedidos */}
+          {blocoAtivo === "pedidos" && (
+            <div>
+              <h2>Pedidos - {mesaAtual?.label}</h2>
+              {!pedidosPorMesa[`Mesa ${mesaSelecionada}`] ||
+              pedidosPorMesa[`Mesa ${mesaSelecionada}`].length === 0 ? (
+                <p>Nenhum pedido encontrado.</p>
+              ) : (
+                pedidosPorMesa[`Mesa ${mesaSelecionada}`].map((pedido) => (
+                  <div
+                    key={pedido.id}
+                    style={{
+                      border: "1px solid #ddd",
+                      padding: "12px",
+                      marginBottom: "10px",
+                      borderRadius: "5px",
+                    }}
+                  >
+                    <h4>Pedido #{pedido.id}</h4>
+                    <p>
+                      Status:{" "}
+                      <span
+                        style={{
+                          color: pedido.status === "pronto" ? "#2e7d32" : "#1976d2",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        {pedido.status}
+                      </span>
+                    </p>
+                    {pedido.itens && pedido.itens.length > 0 && (
+                      <div                  
+                      style={{
+                        padding: "12px",
+                    }}>
+                        <ul>
+                          {pedido.itens.map((item, i) => (
+                            <li
+                              key={i} 
+                              style={{
+                                color: item.status === "pronto" ? "#f8faf8ff" : "#fcfafaff",
+                              }}
+                            >
+                              {item.quantidade}x {item.nome} - R${item.preco}
+                              {item.status === "pronto" && <span> ✅</span>}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+              <button onClick={() => setBlocoAtivo(null)}>Voltar</button>
+            </div>
+          )}
+
+          {/* Bloco Finalizar Conta */}
+          {blocoAtivo === "finalizar" && (
+            <div>
+              <h2>Finalizar Conta - Mesa {mesaAtual?.label}</h2>
+              <p>Confirma a finalização da conta e remoção dos pedidos?</p>
+              <div style={{ display: "flex", gap: "10px" }}>
+                <button onClick={finalizarConta} className="btn-primary" style={{ flex: 1 }}>
+                  Confirmar
+                </button>
+                <button onClick={() => setBlocoAtivo(null)} className="btn-primary" style={{ flex: 1 }}>
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
+
+          {msg && (
+            <div
               style={{
-                position: 'absolute',
-                top: '-10px',
-                right: '-10px',
-                backgroundColor: "#ff4757",
-                color: "#fff",
-                border: "none",
-                width: "32px",
-                height: "32px",
-                cursor: "pointer",
-                borderRadius: "50%",
-                fontSize: "16px",
-                fontWeight: "bold",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
-                transition: "all 0.2s ease",
-                transform: "scale(1)",
-                zIndex: 10
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.backgroundColor = "#ff3742";
-                e.target.style.transform = "scale(1.1)";
-                e.target.style.boxShadow = "0 4px 12px rgba(0,0,0,0.3)";
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.backgroundColor = "#ff4757";
-                e.target.style.transform = "scale(1)";
-                e.target.style.boxShadow = "0 2px 8px rgba(0,0,0,0.2)";
+                marginTop: "20px",
+                padding: "10px",
+                backgroundColor: msg.includes("Erro") ? "#ffebee" : "#e8f5e8",
+                color: msg.includes("Erro") ? "#c62828" : "#2e7d32",
+                borderRadius: "5px",
               }}
             >
-              ✕
-            </button>
-            <h2>Fazer Pedido - {mesaAtual?.label}</h2>
-            {itens.map((item) => (
-              <div key={item.id}>
-                <span>{item.nome} - R${item.preco}</span>
-                <input
-                  type="number"
-                  min="0"
-                  value={selecionados[item.id] || 0}
-                  onChange={(e) => handleQuantidade(item.id, e.target.value)}
-                />
-              </div>
-            ))}
-
-            <button onClick={criarPedido}>Abrir Pedido</button>
-            {msg && <p>{msg}</p>}
-          </div>
-        )}
+              {msg}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
