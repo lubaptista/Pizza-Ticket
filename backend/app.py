@@ -14,7 +14,9 @@ app.config["JWT_SECRET_KEY"] = "sua_chave_secreta"
 
 db.init_app(app)
 jwt = JWTManager(app)
-CORS(app, origins="http://localhost:5173", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
+CORS(app, origins="http://192.168.56.20:5173", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
+# Use este código para rodar fora da VM:
+# CORS(app, origins="http://localhost:5173", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
 
 # Rota de login/logout, geração de JWT:
 app.register_blueprint(auth_bp, url_prefix="/auth") 
@@ -28,4 +30,6 @@ app.register_blueprint(itens_bp)
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
-    app.run(debug=True)
+    app.run("HOST=0.0.0.0", debug=True, port=5000)
+    # Use este código para rodar fora da VM:
+    # app.run(debug=True)

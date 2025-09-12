@@ -8,7 +8,9 @@ export default function Cardapio() {
     // Função para buscar os itens do backend
     async function fetchItens() {
       try {
-        const response = await fetch("http://localhost:5000/cardapio/");
+        const response = await fetch("api/cardapio/");
+        // Use este código para rodar fora da VM:
+        // const response = await fetch("http://localhost:5000/cardapio/");
         if (!response.ok) throw new Error("Erro ao buscar itens do cardápio");
         const data = await response.json();
         setItens(data);

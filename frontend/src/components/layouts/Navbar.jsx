@@ -31,12 +31,12 @@ function Navbar() {
 
       {/* Links */}
       <div className="navbar-links-container">
-        <Link to="/nova-categoria">
+        {/* <Link to="/nova-categoria">
           Nova categoria
         </Link>
         <Link to="/cardapio">
           Cardápio
-        </Link>
+        </Link> */}
 
         {/* Logout */}
         <button onClick={handleLogout}>

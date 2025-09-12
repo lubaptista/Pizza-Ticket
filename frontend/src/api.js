@@ -1,7 +1,9 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "http://localhost:5000",
+  baseURL: "/api",
+  // Use este código para rodar fora da VM:
+  // baseURL: "http://localhost:5000",
 });
 
 // Intercepta cada request e adiciona o token se existir

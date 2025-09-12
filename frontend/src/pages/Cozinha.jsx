@@ -141,14 +141,14 @@ export default function Cozinha() {
             ✕
           </button>
 
-          <h2 style={{ fontSize: '1.2rem', marginBottom: '10px' }}>Pedidos - Mesa {mesaSelecionada}</h2>
+          <h2 style={{ fontSize: '1.2rem', marginBottom: '10px' }}>Pedidos - {mesaSelecionada}</h2>
 
           {pedidosPorMesa[mesaSelecionada]?.map((pedido) => {
             const todosProntos = pedido.itens.every(item => item.statusLocal === 'pronto');
 
             return (
               <div key={pedido.id} className="cardapio-card" style={{ marginBottom: '10px', padding: '12px' }}>
-                <h3 style={{ fontSize: '1rem', marginBottom: '6px' }}>Pedido #{pedido.id}</h3>
+                <h3 style={{ fontSize: '1rem', marginBottom: '10px' }}>Pedido #{pedido.id}</h3>
                 {pedido.itens.map((item) => (
                   <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px', fontSize: '0.9rem' }}>
                     <span>{item.nome} x{item.quantidade}</span>
@@ -166,7 +166,7 @@ export default function Cozinha() {
                           fontSize: '0.8rem'
                         }}
                       >
-                        ✅ Pronto
+                        Pronto
                       </button>
                     )}
                   </div>
@@ -186,7 +186,7 @@ export default function Cozinha() {
                       cursor: 'pointer'
                     }}
                   >
-                    🎉 Pedido Pronto
+                    Pedido Pronto
                   </button>
                 )}
               </div>

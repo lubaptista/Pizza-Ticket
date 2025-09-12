@@ -76,30 +76,34 @@ export default function Garcom() {
   };
 
   const criarPedido = async () => {
-    if (!mesaSelecionada) return setMsg("Selecione uma mesa!");
-    const itensPedido = Object.entries(selecionados)
-      .filter(([id, quantidade]) => quantidade > 0)
-      .map(([id, quantidade]) => ({
-        id: parseInt(id),
-        quantidade: parseInt(quantidade),
-      }));
+  if (!mesaSelecionada) return setMsg("Selecione uma mesa!");
+  const itensPedido = Object.entries(selecionados)
+    .filter(([id, quantidade]) => quantidade > 0)
+    .map(([id, quantidade]) => ({
+      id: parseInt(id),
+      quantidade: parseInt(quantidade),
+    }));
 
-    if (itensPedido.length === 0) return setMsg("Selecione ao menos um item!");
+  if (itensPedido.length === 0) return setMsg("Selecione ao menos um item!");
 
-    try {
-      await api.post("/pedidos/criar", {
-        mesa: mesaSelecionada,
-        itens: itensPedido,
-      });
-      setMsg("Pedido criado!");
-      setSelecionados({});
-      fetchMesas();
-      fetchPedidos();
-    } catch (err) {
-      console.error(err);
-      setMsg("Erro ao criar pedido");
-    }
-  };
+  try {
+    await api.post("/pedidos/criar", {
+      mesa: mesaSelecionada,
+      itens: itensPedido,
+    });
+    setMsg("Pedido criado!");
+    setSelecionados({});
+    await fetchMesas();
+    await fetchPedidos();
+
+    // Redireciona para visualizar os pedidos da mesa
+    setBlocoAtivo("pedidos");
+  } catch (err) {
+    console.error(err);
+    setMsg("Erro ao criar pedido");
+  }
+};
+
 
   const finalizarConta = async () => {
     if (!mesaSelecionada) return;
@@ -179,9 +183,9 @@ export default function Garcom() {
 
           {mesaSelecionada && mesaAtual && !blocoAtivo && (
             <div>
-              <h2>Mesa {mesaAtual.label}</h2>
+              <h2>{mesaAtual.label}</h2>
               {mesaAtual.ocupada ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "10px" }}>
                   <button onClick={() => setBlocoAtivo("finalizar")}>Finalizar Conta</button>
                   <button onClick={() => setBlocoAtivo("pedidos")}>Ver Pedidos</button>
                   <button onClick={() => setBlocoAtivo("fazer-pedido")}>Fazer Pedido</button>
@@ -198,7 +202,7 @@ export default function Garcom() {
           {/* Bloco Ocupar Mesa */}
           {blocoAtivo === "ocupar" && (
             <div>
-              <h2>Ocupar Mesa {mesaAtual?.label}</h2>
+              <h2>Ocupar {mesaAtual?.label}</h2>
               <p>Confirma a ocupação desta mesa?</p>
               <div style={{ display: "flex", gap: "10px" }}>
                 <button onClick={ocuparMesa}>Confirmar</button>
@@ -210,14 +214,14 @@ export default function Garcom() {
           {/* Bloco Fazer Pedido */}
           {blocoAtivo === "fazer-pedido" && (
             <div>
-              <h3>Fazer Pedido - {mesaAtual?.label}</h3>
-              <div className="cardapio-grid" style={{ gap: "0.75rem", padding: "0.5rem" }}>
+              <h2>Fazer Pedido - {mesaAtual?.label}</h2>
+              <div className="cardapio-grid" style={{ gap: "0.75rem", padding: "0.5rem", marginTop: "5px" }}>
                 {itens.map((item) => (
                   <div
                     key={item.id}
                     className="cardapio-card">
                     <div
-                      style={{ display: "flex", justifyContent: "", alignItems: "center" }}
+                      style={{ display: "flex", alignItems: "center" }}
                     >
                       <span>{item.nome}ㅤ-ㅤ</span>
                       <span className="preco"> R${item.preco}</span>
@@ -228,7 +232,7 @@ export default function Garcom() {
                       value={selecionados[item.id] || 0}
                       onChange={(e) => handleQuantidade(item.id, e.target.value)}
                       className="input-box"
-                      style={{ marginTop: "6px", marginBottom: "0", padding: "4px" }}
+                      style={{ marginTop: "6px", marginBottom: "0", padding: "6px" }}
                     />
                   </div>
                 ))}
@@ -252,59 +256,81 @@ export default function Garcom() {
               pedidosPorMesa[`Mesa ${mesaSelecionada}`].length === 0 ? (
                 <p>Nenhum pedido encontrado.</p>
               ) : (
-                pedidosPorMesa[`Mesa ${mesaSelecionada}`].map((pedido) => (
-                  <div
-                    key={pedido.id}
-                    style={{
-                      border: "1px solid #ddd",
-                      padding: "12px",
-                      marginBottom: "10px",
-                      borderRadius: "5px",
-                    }}
-                  >
-                    <h4>Pedido #{pedido.id}</h4>
-                    <p>
-                      Status:{" "}
-                      <span
-                        style={{
-                          color: pedido.status === "pronto" ? "#2e7d32" : "#1976d2",
-                          fontWeight: "bold",
-                        }}
-                      >
-                        {pedido.status}
-                      </span>
-                    </p>
-                    {pedido.itens && pedido.itens.length > 0 && (
-                      <div                  
+                <>
+                  {pedidosPorMesa[`Mesa ${mesaSelecionada}`].map((pedido) => (
+                    <div
+                      key={pedido.id}
                       style={{
+                        border: "1px solid #ddd",
                         padding: "12px",
-                    }}>
-                        <ul>
-                          {pedido.itens.map((item, i) => (
-                            <li
-                              key={i} 
-                              style={{
-                                color: item.status === "pronto" ? "#f8faf8ff" : "#fcfafaff",
-                              }}
-                            >
-                              {item.quantidade}x {item.nome} - R${item.preco}
-                              {item.status === "pronto" && <span> ✅</span>}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
+                        margin: "10px 0px",
+                        borderRadius: "5px",
+                      }}
+                    >
+                      <h4>Pedido #{pedido.id}</h4>
+                      <p style={{ marginBottom: "15px" }}>
+                        Status:{" "}
+                        <span
+                          style={{
+                            color: pedido.status === "pronto" ? "#2e7d32" : "#1976d2",
+                            fontWeight: "bold",
+                          }}
+                        >
+                          {pedido.status}
+                        </span>
+                      </p>
+                      {pedido.itens && pedido.itens.length > 0 && (
+                        <div style={{ padding: "0px 12px" }}>
+                          <ul>
+                            {pedido.itens.map((item, i) => (
+                              <li
+                                key={i}
+                                style={{
+                                  color:
+                                    item.status === "pronto"
+                                      ? "#f8faf8ff"
+                                      : "#fcfafaff",
+                                }}
+                              >
+                                {item.quantidade}x {item.nome} - R$
+                                {(item.preco * item.quantidade).toFixed(2)}
+                                {item.status === "pronto" && <span> ✅</span>}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  {/* cálculo do total da mesa */}
+                  <div style={{ marginTop: "15px", fontWeight: "bold", fontSize: "16px" }}>
+                    Total da Mesa: R$
+                    {pedidosPorMesa[`Mesa ${mesaSelecionada}`]
+                      .reduce((total, pedido) => {
+                        return (
+                          total +
+                          pedido.itens.reduce(
+                            (subTotal, item) =>
+                              subTotal + item.quantidade * item.preco,
+                            0
+                          )
+                        );
+                      }, 0)
+                      .toFixed(2)}
                   </div>
-                ))
+                </>
               )}
-              <button onClick={() => setBlocoAtivo(null)}>Voltar</button>
+              <button onClick={() => setBlocoAtivo(null)} style={{ marginTop: "15px" }}>
+                Voltar
+              </button>
             </div>
           )}
 
           {/* Bloco Finalizar Conta */}
           {blocoAtivo === "finalizar" && (
             <div>
-              <h2>Finalizar Conta - Mesa {mesaAtual?.label}</h2>
+              <h2>Finalizar Conta - {mesaAtual?.label}</h2>
               <p>Confirma a finalização da conta e remoção dos pedidos?</p>
               <div style={{ display: "flex", gap: "10px" }}>
                 <button onClick={finalizarConta} className="btn-primary" style={{ flex: 1 }}>
