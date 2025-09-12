@@ -73,6 +73,33 @@ def criar_pedido():
         "status": pedido.status
     }), 201
 
+# Listar pedidos de uma mesa
+@pedidos_bp.route("/mesa/<int:id_mesa>", methods=["GET"])
+def listar_pedidos_mesa(id_mesa):
+    # Busca pedidos abertos da mesa específica
+    pedidos = Pedido.query.filter_by(mesa_id=id_mesa).all()
+
+    result = []
+    for pedido in pedidos:
+        itens = []
+        for pi in pedido.itens:
+            itens.append({
+                "id": pi.id,
+                "nome": pi.item.nome,
+                "quantidade": pi.quantidade,
+                "preco": pi.item.preco,
+                "status": pi.status
+            })
+        result.append({
+            "id": pedido.id,
+            "mesaId": pedido.mesa.id,
+            "mesa": pedido.mesa.label,
+            "status": pedido.status,
+            "itens": itens
+        })
+
+    return jsonify(result)
+
 # ============================
 # ROTAS DA COZINHA
 # ============================
