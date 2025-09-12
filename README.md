@@ -57,20 +57,12 @@ Permite o cadastro de pedidos, controle de status (aberto, em preparo, entregue)
         pip install -r requirements.txt
     ```
 
-4. Configure as variáveis de ambiente em .env:
+4. Execute o servidor:
     ```bash
-        DATABASE_URL=sqlite:///./pizzaria.db
-        SECRET_KEY=sua_chave_jwt_segura
-        ALGORITHM=HS256
-        ACCESS_TOKEN_EXPIRE_MINUTES=60
-    ```
-
-5. Execute o servidor:
-    ```bash
-        python app.py
+        flask run --host=0.0.0.0 --port=5000
     ```
 <!-- uvicorn main:app --reload -->
-O backend estará rodando em: http://localhost:5000
+O backend estará rodando em: http://192.168.56.30:5000
 
 ### 🔹 Frontend
 
@@ -86,7 +78,73 @@ O backend estará rodando em: http://localhost:5000
 
 3. Rode o projeto:
     ```bash
-        npm run dev
+        npm run dev -- --host
     ```
 
-O frontend estará disponível em: http://localhost:5173
+O frontend estará disponível em: http://192.168.56.20:5173
+
+### 🔹 Nginx
+
+1. Instale o Nginx dentro da Vm1:
+    ```bash
+        sudo apt install nginx -y
+    ```
+    
+2. Configure o nginx:
+    ```bash
+        sudo nano /etc/nginx/sites-available/default
+    ```
+
+3. Coloque esse codigo:
+    ```bash
+        server {
+                listen 80 default_server;
+                listen [::]:80 default_server;
+            
+                server_name pizzaticket;
+            
+                location / {
+                    proxy_pass http://192.168.56.20:5173/; # IP da VM Frontend
+            
+                    proxy_http_version 1.1;
+                    proxy_set_header Upgrade $http_upgrade;
+                    proxy_set_header Connection 'upgrade';
+                    proxy_set_header Host $host;
+                    proxy_cache_bypass $http_upgrade;
+                }
+    
+          location /api/ {
+              rewrite ^/api/(.*) /$1 break; # Esta linha remove o /api
+          
+              proxy_pass http://192.168.56.30:5000;
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_connect_timeout 60s;
+              proxy_send_timeout 60s;
+              proxy_read_timeout 60s;
+          
+              # CORS
+              add_header Access-Control-Allow-Origin *;
+              add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS';
+              add_header Access-Control-Allow-Headers "Authorization, Content-Type";
+          
+              if ($request_method = 'OPTIONS') {
+                  return 204;
+              }
+          }
+        }
+    ```
+    
+4. Execute o Nginx:
+    ```bash
+        sudo systemctl start nginx
+    ```
+
+5. Parar o nginx:
+    ```bash
+        sudo systemctl stop nginx
+    ```
+# Aviso
+
+Tanto o frontend quanto o backend não irão aparecer os Ip correspondentes a eles e sim o Ip Nat do Proxy que é 192.168.91.143 
