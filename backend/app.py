@@ -6,30 +6,32 @@ from routes.auth import auth_bp
 from routes.pedidos import pedidos_bp
 from routes.cardapio import cardapio_bp
 from routes.itens import itens_bp
+from config import Config
 
-app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config["JWT_SECRET_KEY"] = "sua_chave_secreta"
 
-db.init_app(app)
-jwt = JWTManager(app)
-CORS(app, origins="http://192.168.56.20:5173", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
-# Use este código para rodar fora da VM:
-# CORS(app, origins="http://localhost:5173", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
+def create_app():
+    app = Flask(__name__)
+    app.config.from_object(Config)
 
-# Rota de login/logout, geração de JWT:
-app.register_blueprint(auth_bp, url_prefix="/auth") 
-# Rota para abrir pedido, listar, atualizar status:
-app.register_blueprint(pedidos_bp, url_prefix="/pedidos")
-# Rota paar realizar CRUD de categorias e itens:
-app.register_blueprint(cardapio_bp, url_prefix="/cardapio")
+    # Inicializa banco e JWT
+    db.init_app(app)
+    jwt = JWTManager(app)
 
-app.register_blueprint(itens_bp)
+    # CORS – híbrido (Docker usa localhost)
+    CORS(app, resources={r"/*": {"origins": "*"}})
 
+    # Blueprints
+    app.register_blueprint(auth_bp, url_prefix="/auth")
+    app.register_blueprint(pedidos_bp, url_prefix="/pedidos")
+    app.register_blueprint(cardapio_bp, url_prefix="/cardapio")
+    app.register_blueprint(itens_bp)
+
+    return app
+
+
+# Executar localmente (não usado no Docker)
 if __name__ == "__main__":
+    app = create_app()
     with app.app_context():
         db.create_all()
-    app.run("HOST=0.0.0.0", debug=True, port=5000)
-    # Use este código para rodar fora da VM:
-    # app.run(debug=True)
+    app.run(host="0.0.0.0", debug=True, port=5000)

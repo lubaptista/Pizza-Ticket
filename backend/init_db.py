@@ -1,18 +1,23 @@
 from werkzeug.security import generate_password_hash
-from app import app
+from app import create_app
 from models import db, Usuario, Categoria, Item, Pedido, PedidoItem, Mesa
 
 def init_db():
+    app = create_app()
+
     with app.app_context():
-        # Apaga e recria o banco
+        # Reseta banco
         db.drop_all()
         db.create_all()
 
         # Usuários iniciais
         usuarios = [
-            Usuario(nome="Administrador", email="admin@pizzaria.com", password=generate_password_hash("123456"), role="admin"),
-            Usuario(nome="Garçom", email="garcom@pizzaria.com", password=generate_password_hash("123456"), role="garcom"),
-            Usuario(nome="Cozinha", email="cozinha@pizzaria.com", password=generate_password_hash("123456"), role="cozinha"),
+            Usuario(nome="Administrador", email="admin@pizzaria.com",
+                    password=generate_password_hash("123456"), role="admin"),
+            Usuario(nome="Garçom", email="garcom@pizzaria.com",
+                    password=generate_password_hash("123456"), role="garcom"),
+            Usuario(nome="Cozinha", email="cozinha@pizzaria.com",
+                    password=generate_password_hash("123456"), role="cozinha"),
         ]
         db.session.add_all(usuarios)
 
@@ -24,7 +29,7 @@ def init_db():
         db.session.add_all(categorias)
         db.session.commit()
 
-        # Itens (já vinculados às categorias)
+        # Itens
         itens = [
             Item(nome="Pizza Mussarela", preco=40.0, categoria_id=categorias[0].id),
             Item(nome="Pizza Calabresa", preco=45.0, categoria_id=categorias[0].id),
@@ -34,6 +39,7 @@ def init_db():
         db.session.add_all(itens)
         db.session.commit()
 
+        # Mesas
         mesas = [
             Mesa(label="Mesa 1"),
             Mesa(label="Mesa 2"),
@@ -43,8 +49,8 @@ def init_db():
         db.session.add_all(mesas)
         db.session.commit()
 
-
         print("✅ Banco de dados inicializado com sucesso!")
+
 
 if __name__ == "__main__":
     init_db()

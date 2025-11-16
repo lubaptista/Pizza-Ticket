@@ -47,7 +47,7 @@ def criar_pedido():
     mesa_id = data.get("mesa")
     itens_ids = data.get("itens")  # lista de ids de Item
 
-    if not mesa_id or not itens_ids:
+    if not mesa_id:
         return jsonify({"error": "Mesa ou itens não informados"}), 400
 
     # Cria pedido
