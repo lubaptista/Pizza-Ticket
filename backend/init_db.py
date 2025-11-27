@@ -1,6 +1,6 @@
 from werkzeug.security import generate_password_hash
-from app import app
-from models import db, Usuario, Categoria, Item, Pedido, PedidoItem, Mesa
+from .app import create_app 
+from .models import db, Usuario, Categoria, Item, Pedido, PedidoItem, Mesa
 
 def init_db():
     with app.app_context():
@@ -47,4 +47,6 @@ def init_db():
         print("✅ Banco de dados inicializado com sucesso!")
 
 if __name__ == "__main__":
-    init_db()
+    app = create_app()      # Criar o app antes de usar o contexto
+    with app.app_context():
+        init_db()

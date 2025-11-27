@@ -1,0 +1,57 @@
+# .github/workflows/ci.yml
+name: CI Pipeline - Backend e Frontend
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+
+jobs:
+  # JOB 1: Testes de Integração e Unidade do Backend (Flask + PostgreSQL Container)
+  test_backend:
+    # Utiliza o sandbox do GitHub (Runner hospedado) - Requisito do Projeto 3
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do Código
+        uses: actions/checkout@v4
+
+      # Instala o Docker e o Docker Compose (necessário para rodar o ambiente)
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        
+      - name: Executar Testes de Unidade e Integração com Docker Compose
+        # O comando sobe os containers 'db' e 'test'
+        # O serviço 'test' executa 'pytest --verbose' e o código de saída determina o sucesso do job
+        run: docker-compose up --build --exit-code-from test db test
+          
+      - name: Limpar Containers
+        if: always() # Roda mesmo se os testes falharem (para evitar lixo)
+        run: docker-compose down
+
+  # JOB 2: Testes/Build do Frontend (Vite/JSX)
+  test_frontend:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout do Código
+        uses: actions/checkout@v4
+      
+      - name: Configurar Node.js (Ambiente Vite/JSX)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # Ajuste para a sua versão do Node.js
+          cache: 'npm' # Habilita cache de dependências
+
+      - name: Instalar Dependências e Rodar Testes/Build do Frontend
+        run: |
+          cd frontend/ # Navega para a pasta do frontend
+          npm install
+          # Se você tiver testes de frontend (ex: Vitest/Jest), descomente a linha abaixo
+          # npm run test 
+          npm run build # Verifica se o build do frontend está ok (sem erros de compilação)

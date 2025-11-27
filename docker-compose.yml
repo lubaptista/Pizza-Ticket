@@ -1,0 +1,46 @@
+services:
+  # 1. Serviço de Banco de Dados (DB)
+  db:
+    image: postgres:13-alpine # Imagem leve de PostgreSQL para testes
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: pizza_ticket_test # DB específico para o ambiente de teste/CI
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    healthcheck:
+      # ALTERADO: Mudança de 'postgres' para 'user' no pg_isready
+      test: ["CMD-SHELL", "pg_isready -U user"] 
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. Serviço de Testes (Rodará apenas no CI)
+  test:
+    build: . # Usa o Dockerfile na raiz
+    command: pytest --verbose # Comando que o GitHub Actions vai usar
+    volumes:
+      - .:/usr/src/app
+    environment:
+      # Configura a aplicação de teste para conectar ao DB containerizado
+      DATABASE_URL: postgresql://user:password@db:5432/pizza_ticket_test
+    depends_on:
+      db:
+        condition: service_healthy # Espera o DB estar pronto
+        
+  # 3. Serviço Web (Opcional, para rodar localmente)
+  web:
+    build: .
+    command: python app.py
+    volumes:
+      - .:/usr/src/app
+    ports:
+      - "5000:5000"
+    environment:
+      DATABASE_URL: postgresql://user:password@db:5432/pizza_ticket_test
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:

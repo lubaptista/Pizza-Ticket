@@ -1,8 +1,6 @@
 from flask import Blueprint, request, jsonify
-# from flask_jwt_extended import jwt_required, get_jwt
-# from extensions import db, socketio
-# from models import Pedido, PedidoItem, Item, Table, OrderStatus, OrderStatusLog
-from models import db, Pedido, PedidoItem, Item, Mesa
+from ..models import db, Pedido, PedidoItem, Item, Mesa
+from sqlalchemy import select, delete # NOVO: Importa 'select' e 'delete' para consultas 2.0
 
 pedidos_bp = Blueprint("pedidos", __name__)
 
@@ -13,8 +11,13 @@ pedidos_bp = Blueprint("pedidos", __name__)
 # Listar mesas e se estão ocupadas
 @pedidos_bp.route("/mesas", methods=["GET"])
 def listar_mesas():
-    mesas = Mesa.query.all()
-    pedidos_abertos = Pedido.query.filter_by(status="aberto").all()
+    # ALTERADO: De Mesa.query.all() para sintaxe 2.0
+    mesas = db.session.scalars(select(Mesa)).all()
+    
+    # ALTERADO: De Pedido.query.filter_by().all() para sintaxe 2.0
+    stmt_pedidos = select(Pedido).filter_by(status="aberto")
+    pedidos_abertos = db.session.scalars(stmt_pedidos).all()
+    
     ocupadas = {p.mesa_id for p in pedidos_abertos}
 
     result = []
@@ -32,7 +35,11 @@ def alterar_status_mesa(mesa_id):
         data = request.get_json()
         ocupada = data.get('ocupada')
 
-        mesa = Mesa.query.get_or_404(mesa_id)
+        # ALTERADO: De Mesa.query.get_or_404(mesa_id) para db.session.get() e tratamento manual de 404
+        mesa = db.session.get(Mesa, mesa_id)
+        if mesa is None:
+            return jsonify({'error': 'Mesa não encontrada'}), 404
+            
         mesa.ocupada = bool(ocupada)
         db.session.commit()
 
@@ -59,7 +66,10 @@ def criar_pedido():
     for item_data in itens_ids:
         item_id = item_data.get("id")
         quantidade = item_data.get("quantidade", 1)
-        item = Item.query.get(item_id)
+        
+        # ALTERADO: De Item.query.get(item_id) para db.session.get()
+        item = db.session.get(Item, item_id)
+        
         if item:
             pi = PedidoItem(pedido_id=pedido.id, item_id=item.id, quantidade=quantidade, status="aberto")
             db.session.add(pi)
@@ -78,14 +88,18 @@ def criar_pedido():
 def remover_pedidos_mesa(mesa_id):
     try:
         # Busca todos os pedidos da mesa
-        pedidos_da_mesa = Pedido.query.filter_by(mesa_id=mesa_id).all()
+        # ALTERADO: De Pedido.query.filter_by().all() para sintaxe 2.0
+        stmt_pedidos = select(Pedido).filter_by(mesa_id=mesa_id)
+        pedidos_da_mesa = db.session.scalars(stmt_pedidos).all()
+        
         if not pedidos_da_mesa:
             return jsonify({"message": "Nenhum pedido encontrado para esta mesa"}), 404
 
-        # Remove todos os itens de cada pedido
+        # Remove todos os itens de cada pedido e o pedido
         for pedido in pedidos_da_mesa:
-            PedidoItem.query.filter_by(pedido_id=pedido.id).delete()
-            db.session.delete(pedido)
+            # ALTERADO: De PedidoItem.query.filter_by(pedido_id=pedido.id).delete() para sintaxe 2.0
+            db.session.execute(delete(PedidoItem).where(PedidoItem.pedido_id == pedido.id))
+            db.session.delete(pedido) 
 
         db.session.commit()
         return jsonify({"message": f"Todos os pedidos da mesa {mesa_id} foram removidos"}), 200
@@ -100,7 +114,10 @@ def remover_pedidos_mesa(mesa_id):
 # Listar todos os pedidos abertos
 @pedidos_bp.route("/", methods=["GET"])
 def listar_pedidos():
-    pedidos = Pedido.query.filter_by(status="aberto").all()
+    # ALTERADO: De Pedido.query.filter_by().all() para sintaxe 2.0
+    stmt = select(Pedido).filter_by(status="aberto")
+    pedidos = db.session.scalars(stmt).all()
+    
     result = []
 
     for pedido in pedidos:
@@ -122,7 +139,9 @@ def listar_pedidos():
 
 @pedidos_bp.route("/todos", methods=["GET"])
 def listar_todos_pedidos():
-    pedidos = Pedido.query.all()  # Remove o filtro para buscar todos os pedidos
+    # ALTERADO: De Pedido.query.all() para sintaxe 2.0
+    pedidos = db.session.scalars(select(Pedido)).all() 
+    
     result = []
 
     for pedido in pedidos:
@@ -151,7 +170,9 @@ def atualizar_status_item(item_id):
     if not status:
         return jsonify({"error": "Status não informado"}), 400
 
-    pi = PedidoItem.query.get(item_id)
+    # ALTERADO: De PedidoItem.query.get(item_id) para db.session.get()
+    pi = db.session.get(PedidoItem, item_id)
+    
     if not pi:
         return jsonify({"error": "Item não encontrado"}), 404
 
@@ -167,77 +188,12 @@ def atualizar_status_pedido(pedido_id):
     if not status:
         return jsonify({"error": "Status não informado"}), 400
 
-    pedido = Pedido.query.get(pedido_id)
+    # ALTERADO: De Pedido.query.get(pedido_id) para db.session.get()
+    pedido = db.session.get(Pedido, pedido_id)
+    
     if not pedido:
         return jsonify({"error": "Pedido não encontrado"}), 404
 
     pedido.status = status
     db.session.commit()
-    return jsonify({"ok": True})    
-
-# orders_bp = Blueprint('pedidos', __name__, url_prefix='/api/pedidos')
-
-# @orders_bp.post('')
-# @jwt_required()
-# def create_order():
-#     identity = get_jwt()
-#     waiter_id = identity['sub']['id'] if 'sub' in identity else identity['id']
-#     table_id = request.json.get('table_id')
-#     order = Pedido(table_id=table_id, waiter_id=waiter_id)
-#     db.session.add(order)
-#     db.session.commit()
-#     socketio.emit('orders:created', {"order_id": order.id})
-#     return {"id": order.id, "status": order.status.value}
-
-# @orders_bp.get('')
-# @jwt_required() 
-# def list_orders():
-#     status = request.args.get('status')
-#     q = Pedido.query
-#     if status:
-#         q = q.filter(Pedido.status == status)
-#     orders = q.order_by(Pedido.created_at.desc()).all()
-#     return [{
-#         "id": o.id,
-#         "table": o.table.label,
-#         "status": o.status.value,
-#         "items": [{
-#             "id": i.id,
-#             "name": i.menu_item.name,
-#             "qty": i.qty,
-#             "status": i.status.value
-#         } for i in o.items]
-#     } for o in orders]
-
-# @orders_bp.post('/<int:order_id>/items')
-# @jwt_required()
-# def add_item(order_id):
-#     data = request.get_json()
-#     item = Item.query.get_or_404(data['menu_item_id'])
-#     oi = PedidoItem(order_id=order_id, menu_item_id=item.id, qty=data.get('qty',1), note=data.get('note'))
-#     db.session.add(oi)
-#     db.session.commit()
-#     socketio.emit('orders:updated', {"order_id": order_id})
-#     return {"id": oi.id}
-
-# @orders_bp.put('/<int:order_id>/status')
-# @jwt_required()
-# def update_order_status(order_id):
-#     to_status = request.json.get('to_status')
-#     order = Pedido.query.get_or_404(order_id)
-#     log = OrderStatusLog(order_id=order.id, from_status=order.status.value, to_status=to_status)
-#     order.status = to_status
-#     db.session.add(log)
-#     db.session.commit()
-#     socketio.emit('orders:updated', {"order_id": order.id, "to": to_status})
-#     return {"ok": True}
-
-# @orders_bp.put('/<int:order_id>/items/<int:item_id>/status')
-# @jwt_required()
-# def update_order_item_status(order_id, item_id):
-#     to_status = request.json.get('to_status')
-#     oi = PedidoItem.query.filter_by(order_id=order_id, id=item_id).first_or_404()
-#     oi.status = to_status
-#     db.session.commit()
-#     socketio.emit('orders:updated', {"order_id": order_id})
-#     return {"ok": True}
+    return jsonify({"ok": True})

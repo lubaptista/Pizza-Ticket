@@ -1,6 +1,6 @@
 # routes/itens.py
 from flask import Blueprint, jsonify
-from models import Item
+from ..models import Item
 
 itens_bp = Blueprint("itens", __name__, url_prefix="/itens")
 
