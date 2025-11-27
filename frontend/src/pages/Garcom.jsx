@@ -78,7 +78,7 @@ export default function Garcom() {
   const criarPedido = async () => {
   if (!mesaSelecionada) return setMsg("Selecione uma mesa!");
   const itensPedido = Object.entries(selecionados)
-    .filter(([id, quantidade]) => quantidade > 0)
+    .filter(([_id, quantidade]) => quantidade > 0)
     .map(([id, quantidade]) => ({
       id: parseInt(id),
       quantidade: parseInt(quantidade),
