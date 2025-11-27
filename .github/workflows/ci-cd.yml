@@ -1,57 +1,216 @@
-# .github/workflows/ci.yml
-name: CI Pipeline - Backend e Frontend
+name: CI/CD Pipeline PizzaTicket
 
 on:
   push:
-    branches:
-      - main
-      - master
+    branches: [ main, ci-cd-implementation ]
   pull_request:
-    branches:
-      - main
-      - master
+    branches: [ main, ci-cd-implementation ]
 
 jobs:
-  # JOB 1: Testes de Integração e Unidade do Backend (Flask + PostgreSQL Container)
-  test_backend:
-    # Utiliza o sandbox do GitHub (Runner hospedado) - Requisito do Projeto 3
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout do Código
-        uses: actions/checkout@v4
-
-      # Instala o Docker e o Docker Compose (necessário para rodar o ambiente)
-      - name: Configurar Docker Buildx
-        uses: docker/setup-buildx-action@v3
-        
-      - name: Executar Testes de Unidade e Integração com Docker Compose
-        # O comando sobe os containers 'db' e 'test'
-        # O serviço 'test' executa 'pytest --verbose' e o código de saída determina o sucesso do job
-        run: docker-compose up --build --exit-code-from test db test
-          
-      - name: Limpar Containers
-        if: always() # Roda mesmo se os testes falharem (para evitar lixo)
-        run: docker-compose down
-
-  # JOB 2: Testes/Build do Frontend (Vite/JSX)
-  test_frontend:
+  backend-tests:
+    name: Backend Tests
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout do Código
-        uses: actions/checkout@v4
-      
-      - name: Configurar Node.js (Ambiente Vite/JSX)
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20' # Ajuste para a sua versão do Node.js
-          cache: 'npm' # Habilita cache de dependências
-
-      - name: Instalar Dependências e Rodar Testes/Build do Frontend
-        run: |
-          cd frontend/ # Navega para a pasta do frontend
-          npm install
-          # Se você tiver testes de frontend (ex: Vitest/Jest), descomente a linha abaixo
-          # npm run test 
-          npm run build # Verifica se o build do frontend está ok (sem erros de compilação)
+    - name: Checkout código
+      uses: actions/checkout@v3
+    
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements*.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Instalar dependências
+      working-directory: ./backend
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-test.txt
+    
+    - name: Executar testes unitários
+      working-directory: ./backend
+      run: |
+        pytest tests/test_unit.py -v --cov=. --cov-report=xml --cov-report=term
+    
+    - name: Executar testes de integração
+      working-directory: ./backend
+      run: |
+        pytest tests/test_integration.py -v --cov=. --cov-report=xml --cov-report=term
+    
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./backend/coverage.xml
+        flags: backend
+        name: backend-coverage
+  
+  frontend-build:
+    name: Frontend Build and Lint
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+    
+    - name: Instalar dependências
+      working-directory: ./frontend
+      run: npm ci
+    
+    - name: Lint
+      working-directory: ./frontend
+      run: npm run lint
+    
+    - name: Build
+      working-directory: ./frontend
+      run: npm run build
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: frontend-build
+        path: frontend/dist/
+  
+  integration-tests-docker:
+    name: Integration Tests with Docker
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-build]
+    
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v3
+    
+    - name: Setup Docker Buildx
+      uses: docker/setup-buildx-action@v2
+    
+    - name: Build Backend Container
+      working-directory: ./backend
+      run: |
+        docker build -t pizzaticket-backend:test .
+    
+    - name: Build Frontend Container
+      working-directory: ./frontend
+      run: |
+        docker build -t pizzaticket-frontend:test .
+    
+    - name: Run Backend Container
+      run: |
+        docker run -d \
+          --name backend-test \
+          -p 5000:5000 \
+          -e FLASK_ENV=testing \
+          pizzaticket-backend:test
+    
+    - name: Wait for Backend
+      run: |
+        timeout 30 bash -c 'until curl -f http://localhost:5000/pedidos/mesas; do sleep 2; done'
+    
+    - name: Run Integration Tests
+      run: |
+        docker exec backend-test pytest tests/test_integration.py -v
+    
+    - name: Stop containers
+      if: always()
+      run: |
+        docker stop backend-test || true
+        docker rm backend-test || true
+  
+  docker-compose-test:
+    name: Docker Compose Full Stack Test
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-build]
+    
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v3
+    
+    - name: Build and start services
+      run: |
+        docker-compose up -d --build
+    
+    - name: Wait for services
+      run: |
+        timeout 60 bash -c 'until curl -f http://localhost:5000/pedidos/mesas; do sleep 3; done'
+        timeout 60 bash -c 'until curl -f http://localhost:5173; do sleep 3; done'
+    
+    - name: Check backend health
+      run: |
+        curl -f http://localhost:5000/pedidos/mesas || exit 1
+    
+    - name: Check frontend health
+      run: |
+        curl -f http://localhost:5173 || exit 1
+    
+    - name: Run all tests in container
+      run: |
+        docker-compose exec -T backend pytest tests/ -v
+    
+    - name: Stop services
+      if: always()
+      run: |
+        docker-compose down -v
+  
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v3
+    
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+    
+    - name: Upload Trivy results to GitHub Security
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-results.sarif'
+  
+  deployment-ready:
+    name: Deployment Ready Check
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-build, integration-tests-docker, docker-compose-test]
+    
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v3
+    
+    - name: Generate deployment checksum
+      run: |
+        echo "Generating checksum for deployment verification..."
+        find . -type f -name "*.py" -o -name "*.jsx" -o -name "*.js" | sort | xargs sha256sum > deployment-checksum.txt
+        sha256sum deployment-checksum.txt
+    
+    - name: Upload checksum
+      uses: actions/upload-artifact@v3
+      with:
+        name: deployment-checksum
+        path: deployment-checksum.txt
+    
+    - name: Deployment summary
+      run: |
+        echo "## ✅ Deployment Ready" >> $GITHUB_STEP_SUMMARY
+        echo "All tests passed successfully!" >> $GITHUB_STEP_SUMMARY
+        echo "- Backend tests: ✅" >> $GITHUB_STEP_SUMMARY
+        echo "- Frontend build: ✅" >> $GITHUB_STEP_SUMMARY
+        echo "- Integration tests: ✅" >> $GITHUB_STEP_SUMMARY
+        echo "- Docker compose tests: ✅" >> $GITHUB_STEP_SUMMARY
