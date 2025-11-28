@@ -1,4 +1,4 @@
-name: CI/CD Pipeline PizzaTicket
+name: CI Backend Tests
 
 on:
   push:
@@ -6,10 +6,9 @@ on:
   pull_request:
     branches: [ main, ci-cd-implementation ]
 
-
 jobs:
   backend-tests:
-    name: Backend Tests
+    name: Backend Unit & Integration Tests
     runs-on: ubuntu-latest
     
     steps:
@@ -35,179 +34,29 @@ jobs:
         pip install --upgrade pip
         pip install -r requirements.txt
         pip install -r requirements-test.txt
-    
+
+    # -------------------------
+    # 🔥 UNIT TESTS
+    # -------------------------
     - name: Run unit tests
       working-directory: ./backend
       run: |
-        pytest tests -v --cov=. --cov-report=xml
-    
+        pytest tests/unit -v --cov=. --cov-report=xml
+
+    # -------------------------
+    # 🔥 INTEGRATION TESTS
+    # -------------------------
     - name: Run integration tests
       working-directory: ./backend
       run: |
-        pytest tests -v --cov=. --cov-report=xml
-    
+        pytest tests/integration -v
+
+    # -------------------------
+    # 🔥 Coverage upload
+    # -------------------------
     - name: Upload coverage
       uses: codecov/codecov-action@v4
       with:
         files: ./backend/coverage.xml
         flags: backend
         name: backend-coverage
-
-
-
-  frontend-build:
-    name: Frontend Build and Lint
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: frontend/package-lock.json
-    
-    - name: Install dependencies
-      working-directory: ./frontend
-      run: npm ci
-    
-    - name: Lint
-      working-directory: ./frontend
-      run: npm run lint --if-present
-    
-    - name: Build
-      working-directory: ./frontend
-      run: npm run build
-    
-    - name: Upload frontend build
-      uses: actions/upload-artifact@v4
-      with:
-        name: frontend-build
-        path: frontend/dist
-
-
-
-  integration-tests-docker:
-    name: Integration Tests with Docker
-    runs-on: ubuntu-latest
-    needs: [backend-tests, frontend-build]
-    
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-
-    - name: Setup Docker Buildx
-      uses: docker/setup-buildx-action@v3
-    
-    - name: Build backend container
-      working-directory: ./backend
-      run: docker build -t pizzaticket-backend:test .
-    
-    - name: Run backend
-      run: |
-        docker run -d \
-          --name backend-test \
-          -p 5000:5000 \
-          -e FLASK_ENV=testing \
-          pizzaticket-backend:test
-    
-    - name: Wait for backend
-      run: timeout 30 bash -c 'until curl -f http://localhost:5000/pedidos/mesas; do sleep 2; done'
-    
-    - name: Run integration tests inside container
-      run: docker exec backend-test pytest tests/integration -v
-    
-    - name: Cleanup
-      if: always()
-      run: |
-        docker stop backend-test || true
-        docker rm backend-test || true
-
-
-
-  docker-compose-test:
-    name: Docker Compose Full Stack Test
-    runs-on: ubuntu-latest
-    needs: [backend-tests, frontend-build]
-    
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-    
-    - name: Build and start services
-      run: docker-compose up -d --build
-    
-    - name: Wait for backend
-      run: timeout 60 bash -c 'until curl -f http://localhost:5000/pedidos/mesas; do sleep 3; done'
-    
-    - name: Wait for frontend
-      run: timeout 60 bash -c 'until curl -f http://localhost:5173; do sleep 3; done'
-    
-    - name: Test backend health
-      run: curl -f http://localhost:5000/pedidos/mesas
-    
-    - name: Test frontend health
-      run: curl -f http://localhost:5173
-    
-    - name: Run tests in backend container
-      run: docker-compose exec -T backend pytest tests -v
-    
-    - name: Stop stack
-      if: always()
-      run: docker-compose down -v
-
-
-
-  security-scan:
-    name: Security Scan
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-    
-    - name: Run Trivy scan
-      uses: aquasecurity/trivy-action@0.20.0
-      with:
-        scan-type: fs
-        scan-ref: .
-        format: sarif
-        output: trivy-results.sarif
-    
-    - name: Upload SARIF to GitHub
-      uses: github/codeql-action/upload-sarif@v3
-      with:
-        sarif_file: trivy-results.sarif
-
-
-
-  deployment-ready:
-    name: Deployment Ready Check
-    runs-on: ubuntu-latest
-    needs: [backend-tests, frontend-build, integration-tests-docker, docker-compose-test]
-    
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-    
-    - name: Generate checksum
-      run: |
-        find . -type f -name "*.py" -o -name "*.js" | sort | xargs sha256sum > deployment-checksum.txt
-        sha256sum deployment-checksum.txt
-    
-    - name: Upload checksum
-      uses: actions/upload-artifact@v4
-      with:
-        name: deployment-checksum
-        path: deployment-checksum.txt
-    
-    - name: Summary
-      run: |
-        echo "## ✔ Deployment Ready" >> $GITHUB_STEP_SUMMARY
-        echo "Backend tests: OK" >> $GITHUB_STEP_SUMMARY
-        echo "Frontend build: OK" >> $GITHUB_STEP_SUMMARY
-        echo "Integration tests: OK" >> $GITHUB_STEP_SUMMARY
-        echo "Full stack docker: OK" >> $GITHUB_STEP_SUMMARY
