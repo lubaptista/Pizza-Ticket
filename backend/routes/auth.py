@@ -33,6 +33,7 @@ def register():
         return jsonify({"error": "Usuário já existe"}), 400
 
     new_user = Usuario(
+        nome=data["nome"],
         email=data["email"],
         password=generate_password_hash(data["password"]),
         role="user"  # 🔹 Padrão sempre será 'user'
