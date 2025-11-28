@@ -16,7 +16,7 @@ def client():
             from models import db
             db.create_all()
             
-            # Cria dados iniciais
+            # Cria dados iniciais.
             categoria = Categoria(nome="Pizza")
             db.session.add(categoria)
             db.session.commit()
