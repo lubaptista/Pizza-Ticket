@@ -23,7 +23,9 @@ export default defineConfig([
       },
     },
     rules: {
-      'no-unused-vars': "warn",
+      'no-unused-vars':  "off",
+      "react/jsx-uses-react": "error",
+      "react/jsx-uses-vars": "error"
     },
   },
 ])
