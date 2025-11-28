@@ -27,13 +27,16 @@ def register():
 
     if not data.get("email") or not data.get("password"):
         return jsonify({"error": "Email e senha são obrigatórios"}), 400
+    
+    nome = data.get("nome", "usuário")  # se não vier, usa um padrão
+
 
     # Checa se usuário já existe
     if Usuario.query.filter_by(email=data["email"]).first():
         return jsonify({"error": "Usuário já existe"}), 400
 
     new_user = Usuario(
-        nome=data["nome"],
+        nome=nome,
         email=data["email"],
         password=generate_password_hash(data["password"]),
         role="user"  # 🔹 Padrão sempre será 'user'
