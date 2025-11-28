@@ -25,27 +25,30 @@ def login():
 def register():
     data = request.get_json()
 
+    # email e senha são obrigatórios
     if not data.get("email") or not data.get("password"):
         return jsonify({"error": "Email e senha são obrigatórios"}), 400
-    
-    nome = data.get("nome", "usuário")  # se não vier, usa um padrão
 
+    # nome é OPCIONAL (pois o teste não manda)
+    nome = data.get("nome", "Usuário")
 
-    # Checa se usuário já existe
+    # verificar se já existe usuário com esse email
     if Usuario.query.filter_by(email=data["email"]).first():
         return jsonify({"error": "Usuário já existe"}), 400
 
+    # criar usuário
     new_user = Usuario(
         nome=nome,
         email=data["email"],
         password=generate_password_hash(data["password"]),
-        role="user"  # 🔹 Padrão sempre será 'user'
+        role="user"
     )
 
     db.session.add(new_user)
     db.session.commit()
 
     return jsonify({"message": "Usuário registrado com sucesso"}), 201
+
 
 # Rota para criar usuário (somente admin)
 @auth_bp.route("/create-user", methods=["POST"])
