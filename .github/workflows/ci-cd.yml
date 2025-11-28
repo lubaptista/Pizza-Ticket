@@ -39,12 +39,12 @@ jobs:
     - name: Run unit tests
       working-directory: ./backend
       run: |
-        pytest tests -v --cov=. --cov-report=xml
+        pytest tests/unit -v --cov=. --cov-report=xml
     
     - name: Run integration tests
       working-directory: ./backend
       run: |
-        pytest tests -v --cov=. --cov-report=xml
+        pytest tests/integration -v --cov=. --cov-report=xml
     
     - name: Upload coverage
       uses: codecov/codecov-action@v4
