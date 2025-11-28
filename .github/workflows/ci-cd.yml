@@ -1,4 +1,4 @@
-name: CI Backend Tests
+name: CI/CD Pipeline PizzaTicket
 
 on:
   push:
@@ -6,9 +6,10 @@ on:
   pull_request:
     branches: [ main, ci-cd-implementation ]
 
+
 jobs:
   backend-tests:
-    name: Backend Unit & Integration Tests
+    name: Backend Tests
     runs-on: ubuntu-latest
     
     steps:
@@ -34,29 +35,55 @@ jobs:
         pip install --upgrade pip
         pip install -r requirements.txt
         pip install -r requirements-test.txt
-
-    # -------------------------
-    # 🔥 UNIT TESTS
-    # -------------------------
+    
     - name: Run unit tests
       working-directory: ./backend
       run: |
-        pytest tests/unit -v --cov=. --cov-report=xml
-
-    # -------------------------
-    # 🔥 INTEGRATION TESTS
-    # -------------------------
+        pytest tests -v --cov=. --cov-report=xml
+    
     - name: Run integration tests
       working-directory: ./backend
       run: |
-        pytest tests/integration -v
-
-    # -------------------------
-    # 🔥 Coverage upload
-    # -------------------------
+        pytest tests -v --cov=. --cov-report=xml
+    
     - name: Upload coverage
       uses: codecov/codecov-action@v4
       with:
         files: ./backend/coverage.xml
         flags: backend
         name: backend-coverage
+
+
+
+  frontend-build:
+    name: Frontend Build and Lint
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+    
+    - name: Install dependencies
+      working-directory: ./frontend
+      run: npm ci
+    
+    - name: Lint
+      working-directory: ./frontend
+      run: npm run lint --if-present
+    
+    - name: Build
+      working-directory: ./frontend
+      run: npm run build
+    
+    - name: Upload frontend build
+      uses: actions/upload-artifact@v4
+      with:
+        name: frontend-build
+        path: frontend/dist
